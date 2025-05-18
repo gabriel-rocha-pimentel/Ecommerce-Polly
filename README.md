@@ -1,6 +1,6 @@
 # E-commerce Polly
 
-![Logo Polly](./assets/logo.png)
+![Home Polly](./design/Home.png)
 
 ## Descrição
 
