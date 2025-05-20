@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 13% 95%; /* #F4F4F5 */
+    --foreground: 220 13% 13%; /* #1F2937 */
+
+    --card: 0 0% 100%; /* #FFFFFF */
+    --card-foreground: 220 13% 13%; /* #1F2937 */
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 13% 13%;
+
+    --primary: 221 83% 60%; /* #407BFF */
+    --primary-foreground: 0 0% 100%; /* #FFFFFF */
+
+    --secondary: 222 65% 32%; /* #1E3A8A */
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 10% 90%; /* Light Gray for muted backgrounds */
+    --muted-foreground: 220 5% 45%; /* Darker Gray for muted text */
+
+    --accent: 220 10% 85%; /* Lighter gray for accent */
+    --accent-foreground: 220 13% 13%;
+
+    --destructive: 0 72% 51%; /* Red */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 10% 80%; /* Light Gray for borders */
+    --input: 220 10% 75%; /* Slightly darker gray for input borders */
+    --ring: 221 83% 60%; /* #407BFF */
+
+    --radius: 0.5rem; /* 8px */
+  }
+
+  .dark {
+    --background: 220 13% 13%; /* #1F2937 */
+    --foreground: 220 13% 95%; /* #F4F4F5 */
+
+    --card: 222 65% 18%; /* Darker blue for cards in dark mode #1a2b58 approx */
+    --card-foreground: 220 13% 95%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 221 83% 65%; /* Brighter blue for dark mode */
+    --primary-foreground: 222 65% 12%; /* Darker blue for text on primary */
+
+    --secondary: 221 83% 55%; /* Slightly lighter dark blue */
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 222 65% 22%; /* Darker muted */
+    --muted-foreground: 220 10% 65%;
+
+    --accent: 222 65% 25%;
+    --accent-foreground: 220 13% 95%;
+
+    --destructive: 0 63% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 222 65% 25%;
+    --input: 222 65% 28%;
+    --ring: 221 83% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-polly-bg text-polly-text;
+    font-family: 'Inter', sans-serif;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+.btn-primary {
+  @apply bg-polly-blue text-polly-white hover:bg-polly-blue-dark focus-visible:ring-polly-blue;
+}
+
+.btn-secondary {
+   @apply bg-polly-blue-dark text-polly-white hover:bg-opacity-80 focus-visible:ring-polly-blue-dark;
+}
+
+.btn-outline-primary {
+    @apply border-polly-blue text-polly-blue hover:bg-polly-blue hover:text-polly-white;
+}
+
+.shadow-soft {
+    @apply shadow-[0_4px_6px_-1px_rgba(0,0,0,0.07),_0_2px_4px_-2px_rgba(0,0,0,0.05)];
+}
+
+
+/* Custom scrollbar for Tailwind CSS */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.polly-blue-dark') theme('colors.polly-gray-light');
+  }
+  .scrollbar-thumb-polly-blue-dark::-webkit-scrollbar-thumb {
+    background-color: theme('colors.polly-blue-dark');
+    border-radius: 8px;
+  }
+  .scrollbar-track-polly-gray-light::-webkit-scrollbar-track {
+    background-color: theme('colors.polly-gray-light');
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  /* For dark mode scrollbars if needed */
+  .dark .scrollbar-thumb-polly-blue-dark::-webkit-scrollbar-thumb {
+    background-color: theme('colors.polly-blue');
+  }
+  .dark .scrollbar-track-polly-gray-light::-webkit-scrollbar-track {
+    background-color: theme('colors.polly-text'); 
+  }
+}
