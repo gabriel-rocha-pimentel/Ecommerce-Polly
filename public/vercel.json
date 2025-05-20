@@ -1,15 +1,21 @@
 {
-  "version": 2,
   "builds": [
     {
-      "src": "next.config.js",
-      "use": "@vercel/next"
+      "src": "index.html",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist",
+        "cleanUrls": true,
+        "rewrites": [
+          { "source": "/api/(.*)", "destination": "/api/index.js" }
+        ]
+      }
     }
   ],
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
