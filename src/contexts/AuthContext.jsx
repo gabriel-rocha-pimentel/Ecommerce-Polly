@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as authService from '@/services/authService.js';
@@ -101,6 +100,18 @@ export const AuthProvider = ({ children }) => {
   const signup = async (name, email, password, companyNameValue) => {
     setLoading(true);
     try {
+      // Check if an admin already exists
+      const { data: profilesCount, error: countError } = await supabase.rpc('count_profiles');
+
+      if (countError) {
+        console.error('Error checking admin count:', countError);
+        throw new Error('Não foi possível verificar o status do administrador. Tente novamente.');
+      }
+
+      if (profilesCount > 0) {
+        throw new Error('Já existe um usuário administrador registrado. Não é possível criar outra conta de administrador.');
+      }
+
       const response = await authService.registerAdmin(name, email, password, companyNameValue);
       setAdmin(response.user);
       localStorage.setItem('adminToken', response.token);

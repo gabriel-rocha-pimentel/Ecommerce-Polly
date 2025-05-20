@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,8 +8,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
 import { motion } from 'framer-motion';
-import { Save, ArrowLeft, ImagePlus, Tags, Trash2 } from 'lucide-react';
+import { Save, ArrowLeft, ImagePlus, Tags, Trash2, PlusCircle, Loader2 } from 'lucide-react';
 import * as productService from '@/services/productService.js';
+import * as categoryService from '@/services/categoryService.js';
 import { useAuth } from '@/contexts/AuthContext';
 
 const AdminNewProductPage = () => {
@@ -20,7 +21,7 @@ const AdminNewProductPage = () => {
   const [productData, setProductData] = useState({
     name: '',
     description: '',
-    category: '',
+    category: '', // Will store category name or ID
     price: '',
     images: [], 
     stock: '',
@@ -29,7 +30,27 @@ const AdminNewProductPage = () => {
     isFeatured: false,
     isPromotional: false,
   });
+
+  const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCategoryLoading, setIsCategoryLoading] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setIsCategoryLoading(true);
+      try {
+        const fetchedCategories = await categoryService.getCategories();
+        setCategories(fetchedCategories);
+      } catch (error) {
+        toast({ title: 'Erro ao buscar categorias', description: error.message, variant: 'destructive' });
+      } finally {
+        setIsCategoryLoading(false);
+      }
+    };
+    fetchCategories();
+  }, [toast]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -41,7 +62,8 @@ const AdminNewProductPage = () => {
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
-    const imageUrls = files.map(file => `https://via.placeholder.com/300/407BFF/FFFFFF?text=${encodeURIComponent(file.name)}`);
+    // For now, using placeholder. In a real scenario, upload to Supabase Storage and get URLs.
+    const imageUrls = files.map(file => `https://via.placeholder.com/300/407BFF/FFFFFF?text=${encodeURIComponent(file.name)}`); 
     setProductData(prev => ({ ...prev, images: [...prev.images, ...imageUrls] }));
   };
 
@@ -50,6 +72,26 @@ const AdminNewProductPage = () => {
       ...prev,
       images: prev.images.filter((_, i) => i !== index)
     }));
+  };
+
+  const handleCreateNewCategory = async () => {
+    if (!newCategoryName.trim() || !admin?.id) {
+      toast({ title: 'Nome Inválido', description: 'Por favor, insira um nome válido para a nova categoria.', variant: 'destructive' });
+      return;
+    }
+    setIsCategoryLoading(true);
+    try {
+      const createdCategory = await categoryService.createCategory({ name: newCategoryName, admin_id: admin.id });
+      setCategories(prev => [...prev, createdCategory]);
+      setProductData(prev => ({ ...prev, category: createdCategory.name })); // Or createdCategory.id if using IDs
+      setNewCategoryName('');
+      setShowNewCategoryInput(false);
+      toast({ title: 'Categoria Criada!', description: `${createdCategory.name} adicionada.` });
+    } catch (error) {
+      toast({ title: 'Erro ao Criar Categoria', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsCategoryLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -68,6 +110,12 @@ const AdminNewProductPage = () => {
         setIsLoading(false);
         return;
       }
+      
+      if (!productData.category) {
+        toast({ title: 'Erro de Validação', description: 'Por favor, selecione ou crie uma categoria.', variant: 'destructive' });
+        setIsLoading(false);
+        return;
+      }
 
       const newProduct = {
         ...productData,
@@ -82,7 +130,10 @@ const AdminNewProductPage = () => {
       navigate('/admin/produtos');
     } catch (error) {
       toast({ title: 'Erro ao Criar Produto', description: error.message, variant: 'destructive' });
+      // setIsLoading(false) is important here too, to re-enable the button on error.
     } finally {
+      // Ensure isLoading is set to false in the finally block
+      // so it's always reset, regardless of success or failure.
       setIsLoading(false);
     }
   };
@@ -113,18 +164,50 @@ const AdminNewProductPage = () => {
               <Textarea id="description" name="description" value={productData.description} onChange={handleChange} required 
                         className="min-h-[100px] dark:bg-polly-text/20 dark:border-polly-blue/40 dark:focus:border-polly-blue"/>
             </div>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <Label htmlFor="category">Categoria</Label>
-                <Input id="category" name="category" value={productData.category} onChange={handleChange} required 
-                       className="dark:bg-polly-text/20 dark:border-polly-blue/40 dark:focus:border-polly-blue"/>
+            
+            <div>
+              <Label htmlFor="category">Categoria</Label>
+              <div className="flex items-center gap-2">
+                <select 
+                  id="category" 
+                  name="category" 
+                  value={productData.category} 
+                  onChange={handleChange} 
+                  required
+                  className="flex-grow h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-polly-text/20 dark:border-polly-blue/40 dark:focus:border-polly-blue"
+                  disabled={isCategoryLoading}
+                >
+                  <option value="">{isCategoryLoading ? "Carregando..." : "Selecione uma categoria"}</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.name}>{cat.name}</option> 
+                  ))}
+                </select>
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowNewCategoryInput(prev => !prev)} className="btn-outline-primary dark:text-polly-blue dark:border-polly-blue dark:hover:bg-polly-blue/20 dark:hover:text-polly-white">
+                  <PlusCircle className="h-4 w-4" />
+                </Button>
               </div>
-              <div>
-                <Label htmlFor="price">Preço (R$)</Label>
-                <Input id="price" name="price" type="text" placeholder="Ex: 99,90" value={productData.price} onChange={handleChange} required 
-                       className="dark:bg-polly-text/20 dark:border-polly-blue/40 dark:focus:border-polly-blue"/>
-              </div>
+              {showNewCategoryInput && (
+                <div className="mt-2 flex items-center gap-2">
+                  <Input 
+                    type="text" 
+                    placeholder="Nova categoria" 
+                    value={newCategoryName} 
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    className="dark:bg-polly-text/20 dark:border-polly-blue/40 dark:focus:border-polly-blue"
+                  />
+                  <Button type="button" size="sm" onClick={handleCreateNewCategory} disabled={isCategoryLoading || !newCategoryName.trim()} className="btn-primary">
+                    {isCategoryLoading && newCategoryName ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Criar'}
+                  </Button>
+                </div>
+              )}
             </div>
+
+            <div>
+              <Label htmlFor="price">Preço (R$)</Label>
+              <Input id="price" name="price" type="text" placeholder="Ex: 99,90" value={productData.price} onChange={handleChange} required 
+                     className="dark:bg-polly-text/20 dark:border-polly-blue/40 dark:focus:border-polly-blue"/>
+            </div>
+
             <div>
               <Label htmlFor="images">Imagens</Label>
               <div className="mt-1 flex items-center justify-center px-6 pt-5 pb-6 border-2 border-polly-blue/30 dark:border-polly-blue/50 border-dashed rounded-md">
@@ -186,8 +269,9 @@ const AdminNewProductPage = () => {
               </div>
             </div>
             <CardFooter className="p-0 pt-6 flex justify-end">
-              <Button type="submit" className="btn-primary" disabled={isLoading}>
-                <Save className="mr-2 h-4 w-4" /> {isLoading ? 'Salvando...' : 'Salvar Produto'}
+              <Button type="submit" className="btn-primary" disabled={isLoading || isCategoryLoading}>
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} 
+                {isLoading ? 'Salvando...' : 'Salvar Produto'}
               </Button>
             </CardFooter>
           </form>
