@@ -12,6 +12,13 @@ import { Save, ArrowLeft, ImagePlus, Tags, Trash2, PlusCircle, Loader2 } from 'l
 import * as productService from '@/services/productService.js';
 import * as categoryService from '@/services/categoryService.js';
 import { useAuth } from '@/contexts/AuthContext';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  'https://kdrgnptjibdmuzyqikoy.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtkcmducHRqaWJkbXV6eXFpa295Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc2ODk0NTQsImV4cCI6MjA2MzI2NTQ1NH0.uVg4udR_XJAEbI15UX811YMX8gRkct-ehXhEU8rwuzQ'
+);
+
 
 const AdminNewProductPage = () => {
   const navigate = useNavigate();
@@ -23,7 +30,7 @@ const AdminNewProductPage = () => {
     description: '',
     category: '', // Will store category name or ID
     price: '',
-    images: [], 
+    images: [],
     stock: '',
     sku: '',
     tags: '',
@@ -60,12 +67,39 @@ const AdminNewProductPage = () => {
     }));
   };
 
-  const handleImageChange = (e) => {
+  const handleImageChange = async (e) => {
     const files = Array.from(e.target.files);
-    // For now, using placeholder. In a real scenario, upload to Supabase Storage and get URLs.
-    const imageUrls = files.map(file => `https://via.placeholder.com/300/407BFF/FFFFFF?text=${encodeURIComponent(file.name)}`); 
-    setProductData(prev => ({ ...prev, images: [...prev.images, ...imageUrls] }));
+    const uploadedUrls = [];
+
+    for (const file of files) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+      const filePath = `products/${fileName}`; // Agora salva dentro da pasta 'products'
+
+      const { error } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, file);
+
+      if (error) {
+        toast({ title: 'Erro no Upload', description: `Erro ao enviar ${file.name}: ${error.message}`, variant: 'destructive' });
+        continue;
+      }
+
+      const { data: { publicUrl } } = supabase
+        .storage
+        .from('product-images')
+        .getPublicUrl(filePath);
+
+      uploadedUrls.push(publicUrl);
+
+    }
+
+    setProductData(prev => ({
+      ...prev,
+      images: [...prev.images, ...uploadedUrls],
+    }));
   };
+
 
   const removeImage = (index) => {
     setProductData(prev => ({
@@ -110,7 +144,7 @@ const AdminNewProductPage = () => {
         setIsLoading(false);
         return;
       }
-      
+
       if (!productData.category) {
         toast({ title: 'Erro de Validação', description: 'Por favor, selecione ou crie uma categoria.', variant: 'destructive' });
         setIsLoading(false);
@@ -122,9 +156,9 @@ const AdminNewProductPage = () => {
         price: priceAsNumber,
         stock: stockAsNumber,
         tags: productData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
-        adminId: admin.id, 
+        adminId: admin.id,
       };
-      
+
       await productService.createProduct(newProduct);
       toast({ title: 'Produto Criado!', description: `${productData.name} foi adicionado com sucesso.` });
       navigate('/admin/produtos');
@@ -156,30 +190,30 @@ const AdminNewProductPage = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <Label htmlFor="name">Nome do Produto</Label>
-              <Input id="name" name="name" value={productData.name} onChange={handleChange} required 
-                     className="dark:bg-polly-text/20 dark:border-polly-blue/40 dark:focus:border-polly-blue"/>
+              <Input id="name" name="name" value={productData.name} onChange={handleChange} required
+                className="dark:bg-polly-text/20 dark:border-polly-blue/40 dark:focus:border-polly-blue" />
             </div>
             <div>
               <Label htmlFor="description">Descrição</Label>
-              <Textarea id="description" name="description" value={productData.description} onChange={handleChange} required 
-                        className="min-h-[100px] dark:bg-polly-text/20 dark:border-polly-blue/40 dark:focus:border-polly-blue"/>
+              <Textarea id="description" name="description" value={productData.description} onChange={handleChange} required
+                className="min-h-[100px] dark:bg-polly-text/20 dark:border-polly-blue/40 dark:focus:border-polly-blue" />
             </div>
-            
+
             <div>
               <Label htmlFor="category">Categoria</Label>
               <div className="flex items-center gap-2">
-                <select 
-                  id="category" 
-                  name="category" 
-                  value={productData.category} 
-                  onChange={handleChange} 
+                <select
+                  id="category"
+                  name="category"
+                  value={productData.category}
+                  onChange={handleChange}
                   required
                   className="flex-grow h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-polly-text/20 dark:border-polly-blue/40 dark:focus:border-polly-blue"
                   disabled={isCategoryLoading}
                 >
                   <option value="">{isCategoryLoading ? "Carregando..." : "Selecione uma categoria"}</option>
                   {categories.map(cat => (
-                    <option key={cat.id} value={cat.name}>{cat.name}</option> 
+                    <option key={cat.id} value={cat.name}>{cat.name}</option>
                   ))}
                 </select>
                 <Button type="button" variant="outline" size="sm" onClick={() => setShowNewCategoryInput(prev => !prev)} className="btn-outline-primary dark:text-polly-blue dark:border-polly-blue dark:hover:bg-polly-blue/20 dark:hover:text-polly-white">
@@ -188,10 +222,10 @@ const AdminNewProductPage = () => {
               </div>
               {showNewCategoryInput && (
                 <div className="mt-2 flex items-center gap-2">
-                  <Input 
-                    type="text" 
-                    placeholder="Nova categoria" 
-                    value={newCategoryName} 
+                  <Input
+                    type="text"
+                    placeholder="Nova categoria"
+                    value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
                     className="dark:bg-polly-text/20 dark:border-polly-blue/40 dark:focus:border-polly-blue"
                   />
@@ -204,8 +238,8 @@ const AdminNewProductPage = () => {
 
             <div>
               <Label htmlFor="price">Preço (R$)</Label>
-              <Input id="price" name="price" type="text" placeholder="Ex: 99,90" value={productData.price} onChange={handleChange} required 
-                     className="dark:bg-polly-text/20 dark:border-polly-blue/40 dark:focus:border-polly-blue"/>
+              <Input id="price" name="price" type="text" placeholder="Ex: 99,90" value={productData.price} onChange={handleChange} required
+                className="dark:bg-polly-text/20 dark:border-polly-blue/40 dark:focus:border-polly-blue" />
             </div>
 
             <div>
@@ -227,7 +261,7 @@ const AdminNewProductPage = () => {
                 <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                   {productData.images.map((imgUrl, index) => (
                     <div key={index} className="relative group">
-                      <img  src={imgUrl} alt={`Preview ${index + 1}`} className="h-24 w-full object-cover rounded-md" />
+                      <img src={imgUrl} alt={`Preview ${index + 1}`} className="h-24 w-full object-cover rounded-md" />
                       <Button type="button" variant="destructive" size="sm" className="absolute top-1 right-1 opacity-0 group-hover:opacity-100" onClick={() => removeImage(index)}>
                         <Trash2 className="h-3 w-3" />
                       </Button>
@@ -239,38 +273,38 @@ const AdminNewProductPage = () => {
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="stock">Estoque</Label>
-                <Input id="stock" name="stock" type="number" value={productData.stock} onChange={handleChange} required 
-                       className="dark:bg-polly-text/20 dark:border-polly-blue/40 dark:focus:border-polly-blue"/>
+                <Input id="stock" name="stock" type="number" value={productData.stock} onChange={handleChange} required
+                  className="dark:bg-polly-text/20 dark:border-polly-blue/40 dark:focus:border-polly-blue" />
               </div>
               <div>
                 <Label htmlFor="sku">SKU (Opcional)</Label>
-                <Input id="sku" name="sku" value={productData.sku} onChange={handleChange} 
-                       className="dark:bg-polly-text/20 dark:border-polly-blue/40 dark:focus:border-polly-blue"/>
+                <Input id="sku" name="sku" value={productData.sku} onChange={handleChange}
+                  className="dark:bg-polly-text/20 dark:border-polly-blue/40 dark:focus:border-polly-blue" />
               </div>
             </div>
             <div>
               <Label htmlFor="tags">Tags (separadas por vírgula)</Label>
-               <div className="relative">
-                 <Tags className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-polly-gray-dark dark:text-polly-gray-light" />
-                <Input id="tags" name="tags" value={productData.tags} onChange={handleChange} placeholder="Ex: promoção, novo, verão" 
-                       className="pl-10 dark:bg-polly-text/20 dark:border-polly-blue/40 dark:focus:border-polly-blue"/>
+              <div className="relative">
+                <Tags className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-polly-gray-dark dark:text-polly-gray-light" />
+                <Input id="tags" name="tags" value={productData.tags} onChange={handleChange} placeholder="Ex: promoção, novo, verão"
+                  className="pl-10 dark:bg-polly-text/20 dark:border-polly-blue/40 dark:focus:border-polly-blue" />
               </div>
             </div>
             <div className="space-y-3 pt-2">
               <div className="flex items-center space-x-2">
-                <Checkbox id="isFeatured" name="isFeatured" checked={productData.isFeatured} onCheckedChange={(checked) => handleChange({ target: { name: 'isFeatured', type: 'checkbox', checked }})}
-                            className="data-[state=checked]:bg-polly-blue data-[state=checked]:border-polly-blue dark:data-[state=checked]:bg-polly-blue dark:data-[state=checked]:border-polly-blue" />
+                <Checkbox id="isFeatured" name="isFeatured" checked={productData.isFeatured} onCheckedChange={(checked) => handleChange({ target: { name: 'isFeatured', type: 'checkbox', checked } })}
+                  className="data-[state=checked]:bg-polly-blue data-[state=checked]:border-polly-blue dark:data-[state=checked]:bg-polly-blue dark:data-[state=checked]:border-polly-blue" />
                 <Label htmlFor="isFeatured" className="font-normal">Marcar como produto em destaque</Label>
               </div>
               <div className="flex items-center space-x-2">
-                <Checkbox id="isPromotional" name="isPromotional" checked={productData.isPromotional} onCheckedChange={(checked) => handleChange({ target: { name: 'isPromotional', type: 'checkbox', checked }})}
-                            className="data-[state=checked]:bg-polly-blue data-[state=checked]:border-polly-blue dark:data-[state=checked]:bg-polly-blue dark:data-[state=checked]:border-polly-blue"/>
+                <Checkbox id="isPromotional" name="isPromotional" checked={productData.isPromotional} onCheckedChange={(checked) => handleChange({ target: { name: 'isPromotional', type: 'checkbox', checked } })}
+                  className="data-[state=checked]:bg-polly-blue data-[state=checked]:border-polly-blue dark:data-[state=checked]:bg-polly-blue dark:data-[state=checked]:border-polly-blue" />
                 <Label htmlFor="isPromotional" className="font-normal">Marcar como produto promocional</Label>
               </div>
             </div>
             <CardFooter className="p-0 pt-6 flex justify-end">
               <Button type="submit" className="btn-primary" disabled={isLoading || isCategoryLoading}>
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} 
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 {isLoading ? 'Salvando...' : 'Salvar Produto'}
               </Button>
             </CardFooter>

@@ -168,7 +168,7 @@ const AdminProfilePage = () => {
         </CardContent>
       </Card>
 
-      <Card className="shadow-xl bg-white dark:bg-polly-blue-dark/20 dark:border-polly-blue/30 border-red-500/50 dark:border-red-500/70">
+      <Card className="shadow-xl bg-white dark:bg-polly-blue-dark/20 border-red-500/50 dark:border-red-500/70">
         <CardHeader>
           <CardTitle className="text-xl flex items-center text-red-600 dark:text-red-500">
             <ShieldAlert className="mr-2 h-5 w-5" /> Zona de Perigo

@@ -5,9 +5,15 @@ import * as productService from '@/services/productService.js';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabaseClient';
 
-const AuthContext = createContext();
+const AuthContext = createContext(undefined);
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
+  }
+  return context;
+};
 
 export const AuthProvider = ({ children }) => {
   const [admin, setAdmin] = useState(null);
@@ -28,15 +34,11 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem('adminUser', JSON.stringify(currentUser));
           localStorage.setItem('companyName', currentUser.companyName || "Polly E-commerce");
         } else {
-          localStorage.removeItem('adminToken');
-          localStorage.removeItem('adminUser');
-          localStorage.removeItem('companyName');
+          localStorage.clear();
         }
       } catch (error) {
         console.error("Error fetching current user:", error);
-        localStorage.removeItem('adminToken');
-        localStorage.removeItem('adminUser');
-        localStorage.removeItem('companyName');
+        localStorage.clear();
       } finally {
         setLoading(false);
       }
@@ -49,23 +51,19 @@ export const AuthProvider = ({ children }) => {
         setLoading(true);
         if (session?.user) {
           const currentUserDetails = await authService.getCurrentUser();
-          if(currentUserDetails) {
+          if (currentUserDetails) {
             setAdmin(currentUserDetails);
             setCompanyName(currentUserDetails.companyName || "Polly E-commerce");
             localStorage.setItem('adminToken', session.access_token);
             localStorage.setItem('adminUser', JSON.stringify(currentUserDetails));
             localStorage.setItem('companyName', currentUserDetails.companyName || "Polly E-commerce");
           } else {
-             setAdmin(null);
-             localStorage.removeItem('adminToken');
-             localStorage.removeItem('adminUser');
-             localStorage.removeItem('companyName');
+            setAdmin(null);
+            localStorage.clear();
           }
         } else {
           setAdmin(null);
-          localStorage.removeItem('adminToken');
-          localStorage.removeItem('adminUser');
-          localStorage.removeItem('companyName');
+          localStorage.clear();
         }
         setLoading(false);
       }
@@ -100,7 +98,6 @@ export const AuthProvider = ({ children }) => {
   const signup = async (name, email, password, companyNameValue) => {
     setLoading(true);
     try {
-      // Check if an admin already exists
       const { data: profilesCount, error: countError } = await supabase.rpc('count_profiles');
 
       if (countError) {
@@ -135,9 +132,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await authService.logoutAdmin();
       setAdmin(null);
-      localStorage.removeItem('adminToken');
-      localStorage.removeItem('adminUser');
-      localStorage.removeItem('companyName');
+      localStorage.clear();
       toast({ title: 'Logout realizado', description: 'Até logo!' });
       navigate('/admin/login');
     } catch (error) {
@@ -146,7 +141,7 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   };
-  
+
   const updateProfile = async (updatedData) => {
     if (!admin) return false;
     setLoading(true);
@@ -173,16 +168,14 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     try {
       await productService.deleteProductsByAdminId(admin.id);
-      await authService.deleteAdminAccount(admin.id); 
-      const { error: signOutError } = await supabase.auth.signOut(); 
+      await authService.deleteAdminAccount(admin.id);
+      const { error: signOutError } = await supabase.auth.signOut();
       if (signOutError) {
-          console.error("Error during sign out after account deletion:", signOutError);
+        console.error("Error during sign out after account deletion:", signOutError);
       }
       setAdmin(null);
-      localStorage.removeItem('adminToken');
-      localStorage.removeItem('adminUser');
-      localStorage.removeItem('companyName');
-      setCompanyName("Polly E-commerce"); 
+      localStorage.clear();
+      setCompanyName("Polly E-commerce");
       toast({ title: 'Conta Excluída', description: 'Sua conta e produtos foram removidos.' });
       navigate('/admin/login');
       return true;
@@ -193,7 +186,6 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   };
-
 
   const value = {
     admin,
@@ -208,5 +200,9 @@ export const AuthProvider = ({ children }) => {
     setCompanyName,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
